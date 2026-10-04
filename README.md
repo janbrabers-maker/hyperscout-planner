@@ -59,3 +59,7 @@ The first time Richard opens the app, Google asks him to approve it once.
 3. Enable the Apps Script API at https://script.google.com/home/usersettings.
 
 After a push, the code is updated. Re-deploying the web app version is one click in Apps Script (**Deploy > Manage deployments > Edit > New version**), or add `clasp deploy -i <deploymentId>` to the workflow.
+
+## Claude page (no install needed)
+
+`claude-page/hyperscout-planner.html` is the same planner published as a Claude page. It reads and writes the topics sheet through the viewer's own Google Sheets and Google Drive connectors in Claude, so it needs no Apps Script install and no Google sign-in in a browser. The Monday email runs as a Claude scheduled task ("Hyperscout Monday planning email", Mondays 07:27 Amsterdam) instead of the Apps Script trigger.

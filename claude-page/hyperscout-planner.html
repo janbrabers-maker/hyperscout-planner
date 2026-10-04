@@ -1,0 +1,600 @@
+<title>Hyperscout Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Hyperscout planner: brand navy header, beige chips, burnt-orange actions; list-first layout */
+    --navy: #132744; --beige: #ebebe1; --orange: #994214; --on-accent: #ffffff;
+    --ink: #1b1b1b; --muted: #5a6270; --line: #dcdcd2; --bg: #f7f7f2; --card: #ffffff;
+    --heading: #132744; --header-bg: #132744; --header-fg: #ffffff; --header-dim: #cfd6e2;
+    --hover: #fbfbf8; --row-line: #efefe8; --shade: rgba(19,39,68,.45);
+    --red: #b3261e; --red-bg: #fbe9e7; --amber-bg: #fff4d6; --amber-ink: #8a5a00;
+    --green: #2e6b3f; --green-bg: #e6f1e8; --blue-bg: #e7edf6; --grey-bg: #ececec;
+    --chip: #ebebe1; --chip-ink: #132744; --high-bg: #f3dfd5;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --ink: #e6e8ec; --muted: #9aa3b2; --line: #2a3446; --bg: #0f1520; --card: #172030;
+    --heading: #c3d0e8; --header-bg: #0b1a30; --header-fg: #ffffff; --header-dim: #9fb0cc;
+    --orange: #c8703f; --hover: #1b2536; --row-line: #222c3d; --shade: rgba(0,0,0,.6);
+    --red: #ff8a80; --red-bg: #3a1d1d; --amber-bg: #3a3014; --amber-ink: #f0c862;
+    --green: #8fd19e; --green-bg: #1c3324; --blue-bg: #1d2a42; --grey-bg: #2a3140;
+    --chip: #2a3140; --chip-ink: #c3d0e8; --high-bg: #3d2618; color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --ink: #e6e8ec; --muted: #9aa3b2; --line: #2a3446; --bg: #0f1520; --card: #172030;
+    --heading: #c3d0e8; --header-bg: #0b1a30; --header-fg: #ffffff; --header-dim: #9fb0cc;
+    --orange: #c8703f; --hover: #1b2536; --row-line: #222c3d; --shade: rgba(0,0,0,.6);
+    --red: #ff8a80; --red-bg: #3a1d1d; --amber-bg: #3a3014; --amber-ink: #f0c862;
+    --green: #8fd19e; --green-bg: #1c3324; --blue-bg: #1d2a42; --grey-bg: #2a3140;
+    --chip: #2a3140; --chip-ink: #c3d0e8; --high-bg: #3d2618; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100%; font-family: 'DM Sans', Arial, sans-serif; color: var(--ink); background: var(--bg); font-size: 14px; }
+  h1, h2, h3, .brand { font-family: 'Space Grotesk', Arial, sans-serif; }
+  a { color: var(--orange); }
+  header { background: var(--header-bg); color: var(--header-fg); padding: 14px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+  .brand small { font-family: 'DM Sans'; font-weight: 400; opacity: .7; font-size: 12px; margin-left: 8px; }
+  nav { display: flex; gap: 4px; margin-left: 8px; }
+  nav button { background: transparent; border: 0; color: var(--header-dim); font: inherit; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
+  nav button.on { background: rgba(255,255,255,.12); color: var(--header-fg); font-weight: 700; }
+  .spacer { flex: 1; }
+  .who { font-size: 12px; opacity: .8; }
+  .btn { background: var(--orange); color: var(--on-accent); border: 0; padding: 9px 14px; font: inherit; font-weight: 700; cursor: pointer; border-radius: 4px; }
+  .btn.ghost { background: transparent; color: var(--heading); border: 1px solid var(--line); font-weight: 500; }
+  .btn.danger { background: transparent; color: var(--red); border: 1px solid var(--red); font-weight: 500; }
+  header .btn.ghost { color: var(--header-fg); border-color: rgba(255,255,255,.35); }
+  main { padding: 18px 20px 60px; max-width: 1280px; margin: 0 auto; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+  .bar input, .bar select { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--card); color: var(--ink); }
+  .bar input[type=search] { min-width: 220px; flex: 1; max-width: 360px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); padding: 12px 14px; border-radius: 6px; }
+  .kpi b { display: block; font-family: 'Space Grotesk'; font-size: 24px; color: var(--heading); }
+  .kpi span { color: var(--muted); font-size: 12px; }
+  .kpi.alert b { color: var(--red); }
+  h2 { font-size: 16px; color: var(--heading); margin: 22px 0 8px; display: flex; align-items: center; gap: 8px; }
+  h2 .count { font-family: 'DM Sans'; font-weight: 400; color: var(--muted); font-size: 13px; }
+  .list { background: var(--card); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 52px 1fr 130px 112px 128px 40px; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--row-line); }
+  .row:first-child { border-top: 0; }
+  .row:hover { background: var(--hover); }
+  .row .id { color: var(--muted); font-size: 12px; }
+  .row .t { cursor: pointer; }
+  .row .t .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .row .due { font-size: 13px; text-align: right; white-space: nowrap; }
+  .row .due.late { color: var(--red); font-weight: 700; }
+  .row .due.soon { color: var(--amber-ink); font-weight: 700; }
+  .row.done .t { color: var(--muted); text-decoration: line-through; }
+  .row select { font: inherit; font-size: 12px; padding: 5px 6px; border-radius: 12px; border: 1px solid transparent; width: 100%; cursor: pointer; color: var(--ink); }
+  .s-Not.started { background: var(--grey-bg); } .s-In.progress { background: var(--blue-bg); }
+  .s-Waiting { background: var(--amber-bg); } .s-Blocked { background: var(--red-bg); color: var(--red); }
+  .s-Done { background: var(--green-bg); color: var(--green); }
+  .owner { font-size: 12px; color: var(--heading); }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px; background: var(--chip); color: var(--chip-ink); margin-left: 6px; vertical-align: 1px; }
+  .pill.high { background: var(--high-bg); color: var(--orange); }
+  .pill.priv { background: var(--heading); color: var(--card); }
+  .folder { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid var(--line); background: var(--card); cursor: pointer; text-decoration: none; }
+  .folder.none { opacity: .45; }
+  .folder svg { width: 16px; height: 16px; fill: var(--orange); }
+  .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 14px; }
+  .person { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+  .person h3 { margin: 0 0 4px; font-size: 18px; color: var(--heading); display: flex; justify-content: space-between; align-items: baseline; }
+  .person h3 small { font-family: 'DM Sans'; font-weight: 400; font-size: 12px; color: var(--muted); }
+  .stack { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--grey-bg); margin: 8px 0 4px; }
+  .stack i { display: block; height: 100%; }
+  .legend { font-size: 11px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 0; }
+  .mini { border-top: 1px solid var(--row-line); padding: 7px 0; display: grid; grid-template-columns: 1fr 96px 70px 30px; gap: 8px; align-items: center; font-size: 13px; }
+  .mini .t { cursor: pointer; }
+  .mini .t small { color: var(--muted); display: block; font-size: 11px; }
+  .mini select { font: inherit; font-size: 11px; padding: 4px; border-radius: 10px; border: 1px solid transparent; color: var(--ink); max-width: 100%; }
+  .more { font-size: 12px; color: var(--muted); padding-top: 6px; cursor: pointer; }
+  .empty { padding: 18px; color: var(--muted); text-align: center; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  /* modal */
+  .shade { position: fixed; inset: 0; background: var(--shade); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; z-index: 10; }
+  .shade.on { display: flex; }
+  .modal { background: var(--card); width: 100%; max-width: 640px; border-radius: 8px; padding: 20px; }
+  .modal h3 { margin: 0 0 14px; color: var(--heading); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .field input, .field select, .field textarea { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--card); color: var(--ink); }
+  .field textarea { min-height: 64px; resize: vertical; }
+  .actions { display: flex; gap: 8px; margin-top: 18px; align-items: center; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--heading); color: var(--card); padding: 10px 16px; border-radius: 4px; font-size: 13px; display: none; z-index: 20; }
+  .toast.err { background: var(--red); color: var(--card); }
+  .loading { padding: 60px; text-align: center; color: var(--muted); }
+  @media (max-width: 760px) {
+    .row { grid-template-columns: 1fr 100px 36px; }
+    .row .id, .row .owner, .row .due { display: none; }
+    .people { grid-template-columns: 1fr; }
+    .grid2 { grid-template-columns: 1fr; }
+    nav { order: 3; width: 100%; margin: 0; }
+  }
+
+  .banner { background: var(--amber-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
+  .banner b { color: var(--heading); }
+  .banner.err { background: var(--red-bg); }
+  .sync { font-size: 12px; color: var(--muted); }
+  .row > div, .mini > div { min-width: 0; }
+  .t { overflow-wrap: anywhere; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+</style>
+
+<header>
+  <div class="brand">Hyperscout<small>planner</small></div>
+  <nav id="nav">
+    <button data-v="week" class="on">This week</button>
+    <button data-v="people">People</button>
+    <button data-v="all">All topics</button>
+  </nav>
+  <div class="spacer"></div>
+  <span class="who sync" id="who" style="color:var(--header-dim)"></span>
+  <button class="btn ghost" id="refreshBtn">Refresh</button>
+  <a class="btn ghost" id="sheetLink" target="_blank" rel="noopener" style="text-decoration:none">Sheet</a>
+  <a class="btn ghost" id="driveLink" target="_blank" rel="noopener" style="text-decoration:none">Drive</a>
+  <button class="btn" id="addBtn">+ Add topic</button>
+</header>
+
+<main id="main"><div class="loading">Loading topics...</div></main>
+
+<div class="shade" id="shade">
+  <div class="modal">
+    <h3 id="mTitle">Topic</h3>
+    <form id="form" class="grid2" autocomplete="off">
+      <div class="field full"><label for="f-topic">Topic</label><textarea id="f-topic" required></textarea></div>
+      <div class="field"><label for="f-workstream">Workstream</label><select id="f-workstream"></select></div>
+      <div class="field"><label for="f-owner">Owner (use + for two people)</label><input id="f-owner" list="ownerList" required><datalist id="ownerList"></datalist></div>
+      <div class="field"><label for="f-start">Start</label><input type="date" id="f-start"></div>
+      <div class="field"><label for="f-due">Due</label><input type="date" id="f-due"></div>
+      <div class="field"><label for="f-status">Status</label><select id="f-status"></select></div>
+      <div class="field"><label for="f-priority">Priority</label><select id="f-priority"></select></div>
+      <div class="field full"><label for="f-depends">Depends on / blocks</label><input id="f-depends"></div>
+      <div class="field full"><label for="f-notes">Notes</label><textarea id="f-notes"></textarea></div>
+      <div class="field"><label for="f-source">Source</label><input id="f-source"></div>
+      <div class="field"><label for="f-folder">Drive folder</label><input id="f-folder" placeholder="Created automatically on save"></div>
+    </form>
+    <div class="note" id="mNote"></div>
+    <div class="actions">
+      <button class="btn" id="saveBtn">Save</button>
+      <button class="btn ghost" id="cancelBtn">Cancel</button>
+      <a class="btn ghost" id="openFolder" target="_blank" style="text-decoration:none;display:none">Open folder</a>
+      <div class="spacer"></div>
+      <button class="btn danger" id="delBtn">Remove topic</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var D = null;              // data from the server
+  var view = 'week';
+  var editing = null;        // topic being edited, null for new
+  var weekWho = '';          // person shown on "This week" ('' = whole team)
+  var filters = { q: '', owner: '', ws: '', status: 'open' };
+  var COLORS = { 'Not started': '#c9c9c3', 'In progress': '#5b7bb0', 'Waiting': '#d9a521', 'Blocked': '#b3261e', 'Done': '#2e6b3f' };
+  var FOLDER_SVG = '<svg viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+
+  /* ---------- Google Sheets / Drive through the viewer's Claude connectors ---------- */
+  var SHEET = '1gxkgoS9AWZ402UrAB9-pfyuwW-cUEvhv_45vAn7UMUU';
+  var PRIVATE_FILE = '12iETcfMpVwgCn-6TK9tP4kjNA402SxpFHtlX_wJx3_4';
+  var PARENT_FOLDER = '1-vabtHOSISvGSDRP0-oHv-IR4nKPWX4Z';
+  var WS_FOLDERS = {
+    'Tradeshows & Pitti': '1hAyWQy4ns_p-37GqIEoafHTkRrfR7ZZi', 'Brands': '1QKdlCqjyUXpq3rKd9wpukE-bl4M_69DQ',
+    'Producers': '12LQ_PgvZCEd9Ca7w3p8sy604aO-m869f', 'Tech & data': '1kY62279Jozx1_Mg3hdVXoofyn89Cx-0J',
+    'Puglia grant & Italia': '1jI4ROPKOAlNZeGOpPaavXl75JkeffTVo', 'HR': '1agHFIFXJXeMeh8TAfguW6cGYv8OUUy17',
+    'Finance': '1jp7nCyV9DHFo9nIHCuwlXfJVpo7KIY2j', 'Legal & admin': '1Lp8aSAUzzsXJQ7M5v6dnyBnKtA4kOo8N'
+  };
+  var PREFIX = { 'Tradeshows & Pitti': 'T', 'Brands': 'B', 'Producers': 'P', 'Tech & data': 'X', 'Puglia grant & Italia': 'G', 'HR': 'H', 'Finance': 'F', 'Legal & admin': 'L' };
+  var STATUSES = ['Not started', 'In progress', 'Waiting', 'Blocked', 'Done'];
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var MCP = null;
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function isoOf(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function sheetToIso(v) {
+    if (!v) return '';
+    var s = String(v).trim(), m;
+    if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return m[1] + '-' + m[2] + '-' + m[3];
+    if ((m = s.match(/^(\d{1,2})[ \/-]([A-Za-z]{3})[a-z]*[ \/-](\d{4})$/))) {
+      var mi = MONTHS.indexOf(m[2].charAt(0).toUpperCase() + m[2].slice(1, 3).toLowerCase());
+      if (mi >= 0) return m[3] + '-' + pad(mi + 1) + '-' + pad(+m[1]);
+    }
+    if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return m[3] + '-' + pad(+m[2]) + '-' + pad(+m[1]);
+    return '';
+  }
+  function isoToSheet(s) { if (!s) return ''; var p = s.split('-'); return pad(+p[2]) + ' ' + MONTHS[+p[1] - 1] + ' ' + p[0]; }
+
+  function err(code, message) { var e = new Error(message); e.code = code; return e; }
+  function explain(e) {
+    var c = e && e.code, srv = (e && e.server) || 'Google Sheets';
+    if (c === 'needs_reauth') return 'Your ' + srv + ' connection has expired. Reconnect it in claude.ai Settings > Connectors, then reload.';
+    if (c === 'server_not_connected') return srv + ' is not connected to your Claude account. Add it in claude.ai Settings > Connectors, then reload.';
+    if (c === 'selection_required') return 'You have more than one ' + srv + ' connector. Choose one when Claude asks, then reload.';
+    if (c === 'not_in_manifest' || c === 'consent_required') return 'This page has no permission to use ' + srv + '. Allow it from the page\'s Permissions menu, then reload.';
+    if (c === 'blocked_by_policy' || c === 'approval_required') return 'Your organisation blocks this ' + srv + ' action for this page.';
+    if (c === 'server_unavailable' || c === 'rate_limited') return srv + ' did not answer in time. Try again in a moment.';
+    if (c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed' || c === 'no_mcp') return 'Open this page inside Claude (claude.ai or the Claude app) so it can reach your Google Sheets.';
+    if (c === 'tool_error') return srv + ' refused the change: ' + (e.message || 'unknown reason') + '.';
+    return (e && e.message) || 'Something went wrong. Reload the page.';
+  }
+  async function tool(server, name, input) {
+    if (!MCP) throw err('no_mcp', 'No connector access');
+    var r = await MCP.callTool(server, name, input, { cache: false });
+    return r.payload;
+  }
+  async function values(spreadsheetId, range) {
+    var p = await tool('Google Sheets', 'get_values', { spreadsheetId: spreadsheetId, range: range });
+    return (p && p.values) || [];
+  }
+  function rowToTopic(r, priv) {
+    r = r || [];
+    var g = function (i) { return r[i] == null ? '' : String(r[i]); };
+    return { id: g(0), workstream: g(1), topic: g(2), owner: g(3), start: sheetToIso(g(4)), due: sheetToIso(g(5)),
+      status: STATUSES.indexOf(g(6)) >= 0 ? g(6) : 'Not started', priority: g(7) || 'Medium', depends: g(8), source: g(9),
+      notes: g(10), folder: priv ? '' : g(11), updated: priv ? '' : sheetToIso(g(12)), private: !!priv };
+  }
+  async function findRow(id) {
+    var col = await values(SHEET, 'Topics!A1:A');
+    for (var i = 1; i < col.length; i++) if (String(col[i][0] || '') === String(id)) return { row: i + 1, col: col };
+    return { row: 0, col: col };
+  }
+
+  var API = {
+    getData: async function () {
+      var res = await Promise.all([
+        values(SHEET, 'Topics!A1:M'),
+        values(SHEET, 'People!A1:C'),
+        values(PRIVATE_FILE, "'Private topics'!A4:K").catch(function () { return null; })
+      ]);
+      var topics = res[0].slice(1).filter(function (r) { return r && r[0]; }).map(function (r) { return rowToTopic(r, false); });
+      var priv = (res[2] || []).filter(function (r) { return r && r[0]; }).map(function (r) { return rowToTopic(r, true); });
+      var people = res[1].slice(1).filter(function (r) { return r && r[0]; }).map(function (r) { return { name: String(r[0]).trim(), email: String(r[1] || '').trim() }; });
+      return { me: '', meName: 'Jan', today: isoOf(new Date()), topics: topics.concat(priv), people: people,
+        workstreams: Object.keys(PREFIX), statuses: STATUSES, priorities: ['High', 'Medium', 'Low'],
+        parentFolderUrl: 'https://drive.google.com/drive/folders/' + PARENT_FOLDER,
+        sheetUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET + '/edit', privateOk: res[2] !== null };
+    },
+    saveTopic: async function (t) {
+      var f = await findRow(t.id || '__new__'), row = f.row;
+      if (t.id && !row) throw err('gone', t.id + ' is no longer in the sheet. Reload the page.');
+      if (!t.id) {
+        var prefix = PREFIX[t.workstream] || 'O', max = 0, re = new RegExp('^' + prefix + '(\\d+)$');
+        f.col.concat(D.topics.map(function (x) { return [x.id]; })).forEach(function (r) { var m = String(r[0] || '').match(re); if (m) max = Math.max(max, +m[1]); });
+        t.id = prefix + pad(max + 1);
+        row = f.col.length + 1;
+      }
+      if (!t.folder) {
+        try {
+          var name = (t.id + ' · ' + t.topic).replace(/[\/\\]/g, '-');
+          if (name.length > 70) name = name.slice(0, 67) + '...';
+          var fo = await tool('Google Drive', 'create_file', { title: name, contentMimeType: 'application/vnd.google-apps.folder', parentId: WS_FOLDERS[t.workstream] || PARENT_FOLDER });
+          t.folder = (fo && (fo.viewUrl || (fo.id && 'https://drive.google.com/drive/folders/' + fo.id))) || '';
+        } catch (e) { t.folderError = explain(Object.assign(e, { server: 'Google Drive' })); }
+      }
+      var today = isoOf(new Date());
+      await tool('Google Sheets', 'update_values', { spreadsheetId: SHEET, range: 'Topics!A' + row + ':M' + row, values: [[
+        t.id, t.workstream, t.topic, t.owner, isoToSheet(t.start), isoToSheet(t.due), t.status || 'Not started', t.priority || 'Medium',
+        t.depends || '', t.source || '', t.notes || '', t.folder || '', isoToSheet(today)]] });
+      t.updated = today; t.private = false;
+      return t;
+    },
+    setStatus: async function (id, status) {
+      var f = await findRow(id);
+      if (!f.row) throw err('gone', id + ' is no longer in the sheet. Reload the page.');
+      await tool('Google Sheets', 'update_values', { spreadsheetId: SHEET, range: 'Topics!G' + f.row + ':M' + f.row,
+        values: [[status, null, null, null, null, null, isoToSheet(isoOf(new Date()))]] });
+      return true;
+    },
+    deleteTopic: async function (id) {
+      var f = await findRow(id);
+      if (!f.row) return true;
+      await tool('Google Sheets', 'update_spreadsheet', { spreadsheetId: SHEET, requests: [{ deleteDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: f.row - 1, endIndex: f.row } } }] });
+      return true;
+    },
+    createFolderFor: async function (id) {
+      var t = find(id); if (!t) throw err('gone', id + ' not found.');
+      t = Object.assign({}, t, { folder: '' });
+      var saved = await API.saveTopic(t);
+      if (!saved.folder) throw err('folder', saved.folderError || 'The folder could not be created.');
+      return saved.folder;
+    }
+  };
+
+  function call(fn, args, ok, fail) {
+    API[fn].apply(null, args || []).then(ok || function () {}).catch(function (e) {
+      toast(explain(e), true);
+      if (fail) fail(e);
+    });
+  }
+  async function load() {
+    $('main').innerHTML = '<div class="loading">Loading your topics from Google Sheets...</div>';
+    if (!MCP) {
+      try { MCP = window.claude && window.claude.use ? await window.claude.use('mcp') : null; } catch (e) { MCP = null; }
+    }
+    if (!MCP) { $('main').innerHTML = '<div class="banner err"><b>Not connected.</b> ' + explain({ code: 'no_mcp' }) + '</div>'; return; }
+    try {
+      D = await API.getData();
+      weekWho = D.meName || '';
+      boot(); render();
+    } catch (e) {
+      $('main').innerHTML = '<div class="banner err"><b>Could not load the topics.</b> ' + esc(explain(e)) +
+        ' <button class="btn ghost" id="retry" style="margin-left:8px">Try again</button></div>';
+      var r = $('retry'); if (r) r.onclick = load;
+    }
+  }
+  /* ---------- dates ---------- */
+  function parse(s) { if (!s) return null; var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function today() { return parse(D.today); }
+  function monday(d) { var x = new Date(d); var g = x.getDay(); x.setDate(x.getDate() + (g === 0 ? -6 : 1 - g)); return x; }
+  function add(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function fmt(s) { var d = parse(s); return d ? d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' }) : ''; }
+  function dueClass(t) {
+    if (!t.due || t.status === 'Done') return '';
+    var d = parse(t.due), n = today();
+    if (d < n) return 'late';
+    if ((d - n) / 864e5 <= 7) return 'soon';
+    return '';
+  }
+
+  /* ---------- helpers ---------- */
+  function owners(t) { return String(t.owner).split(/[+\/,&]| and /i).map(function (s) { return s.trim(); }).filter(Boolean); }
+  function owns(t, name) { name = name.toLowerCase(); return owners(t).some(function (o) { return o.toLowerCase() === name; }); }
+  function open(t) { return t.status !== 'Done'; }
+  function byDue(a, b) { return String(a.due || '9999').localeCompare(String(b.due || '9999')); }
+  function weekBuckets(list) {
+    var ws = monday(today()), we = add(ws, 6), ne = add(ws, 13);
+    var out = { overdue: [], week: [], next: [] };
+    list.filter(open).forEach(function (t) {
+      var d = parse(t.due), s = parse(t.start);
+      if (d && d < ws) out.overdue.push(t);
+      else if ((d && d <= we) || t.status === 'In progress' || (s && s >= ws && s <= we)) out.week.push(t);
+      else if ((s && s > we && s <= ne) || (d && d > we && d <= ne)) out.next.push(t);
+    });
+    Object.keys(out).forEach(function (k) { out[k].sort(byDue); });
+    return out;
+  }
+  function allOwnerNames() {
+    var set = {};
+    D.people.forEach(function (p) { set[p.name] = 1; });
+    D.topics.forEach(function (t) { owners(t).forEach(function (o) { set[o] = 1; }); });
+    return Object.keys(set).sort(function (a, b) {
+      var pa = D.people.findIndex(function (p) { return p.name === a; }), pb = D.people.findIndex(function (p) { return p.name === b; });
+      if (pa < 0) pa = 99; if (pb < 0) pb = 99;
+      return pa - pb || a.localeCompare(b);
+    });
+  }
+
+  /* ---------- pieces ---------- */
+  function statusSelect(t, cls) {
+    if (t.private) return '<span class="pill priv" title="Edit in your private planning file">private</span>';
+    return '<select class="' + (cls || '') + ' s-' + t.status.replace(' ', '.') + '" data-status="' + esc(t.id) + '">' +
+      D.statuses.map(function (s) { return '<option' + (s === t.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>';
+  }
+  function folderBtn(t) {
+    if (t.folder) return '<a class="folder" href="' + esc(t.folder) + '" target="_blank" title="Open Drive folder">' + FOLDER_SVG + '</a>';
+    if (t.private) return '';
+    return '<button class="folder none" data-mkfolder="' + esc(t.id) + '" title="Create Drive folder">' + FOLDER_SVG + '</button>';
+  }
+  function row(t) {
+    return '<div class="row' + (t.status === 'Done' ? ' done' : '') + '">' +
+      '<div class="id">' + esc(t.id) + '</div>' +
+      '<div class="t" data-edit="' + esc(t.id) + '">' + esc(t.topic) +
+        (t.priority === 'High' ? '<span class="pill high">High</span>' : '') +
+        (t.private ? '<span class="pill priv">private</span>' : '') +
+        '<div class="meta">' + esc(t.workstream) + (t.notes ? ' · ' + esc(t.notes) : '') + '</div></div>' +
+      '<div class="owner">' + esc(t.owner) + '</div>' +
+      '<div class="due ' + dueClass(t) + '">' + fmt(t.due) + '</div>' +
+      '<div>' + statusSelect(t) + '</div>' +
+      '<div>' + folderBtn(t) + '</div></div>';
+  }
+  function list(title, items, emptyText) {
+    return '<h2>' + title + ' <span class="count">' + items.length + '</span></h2>' +
+      '<div class="list">' + (items.length ? items.map(row).join('') : '<div class="empty">' + emptyText + '</div>') + '</div>';
+  }
+  function kpi(n, label, alert) { return '<div class="kpi' + (alert && n ? ' alert' : '') + '"><b>' + n + '</b><span>' + label + '</span></div>'; }
+
+  /* ---------- views ---------- */
+  function viewWeek() {
+    var who = weekWho;
+    var pool = who ? D.topics.filter(function (t) { return owns(t, who); }) : D.topics;
+    var b = weekBuckets(pool);
+    var ws = monday(today());
+    var h = bar(true, false);
+    h += '<div class="kpis">' + kpi(b.overdue.length, 'overdue', true) + kpi(b.week.length, 'this week') +
+      kpi(b.next.length, 'next week') + kpi(pool.filter(open).length, 'open in total') + '</div>';
+    h += '<div class="note">Week of ' + ws.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) +
+      (who ? ', showing ' + esc(who) : ', whole team') + '. Same rules as the Monday email.</div>';
+    h += list('Overdue', b.overdue, 'Nothing overdue.');
+    h += list('This week', b.week, 'Nothing due this week.');
+    h += list('Coming up next week', b.next, 'Nothing starting next week.');
+    return h;
+  }
+
+  function isTeam(t) { return D.people.some(function (p) { return owns(t, p.name); }); }
+  function viewPeople() {
+    var names = D.people.map(function (p) { return p.name; }).concat(['Partners & suppliers']);
+    var h = '<div class="note" style="margin:0 0 12px">One card per person on the People tab. Topics owned only by partners or suppliers (Tezeract, Feedel, Ivano...) are grouped in the last card.</div><div class="people">';
+    names.forEach(function (n) {
+      var mine = n === 'Partners & suppliers' ? D.topics.filter(function (t) { return !isTeam(t); }) : D.topics.filter(function (t) { return owns(t, n); });
+      if (!mine.length) return;
+      var counts = {}; D.statuses.forEach(function (s) { counts[s] = 0; });
+      mine.forEach(function (t) { counts[t.status] = (counts[t.status] || 0) + 1; });
+      var b = weekBuckets(mine);
+      var openList = mine.filter(open).sort(byDue);
+      h += '<div class="person"><h3>' + esc(n) + '<small>' + openList.length + ' open · ' + counts['Done'] + ' done</small></h3>';
+      h += '<div class="stack">' + D.statuses.map(function (s) {
+        return counts[s] ? '<i style="width:' + (100 * counts[s] / mine.length) + '%;background:' + COLORS[s] + '" title="' + s + ': ' + counts[s] + '"></i>' : '';
+      }).join('') + '</div>';
+      h += '<div class="legend">' + D.statuses.map(function (s) {
+        return counts[s] ? '<span><i style="background:' + COLORS[s] + '"></i>' + s + ' ' + counts[s] + '</span>' : '';
+      }).join('') + (b.overdue.length ? '<span style="color:var(--red);font-weight:700">' + b.overdue.length + ' overdue</span>' : '') + '</div>';
+      openList.slice(0, 8).forEach(function (t) { h += mini(t); });
+      if (openList.length > 8) h += n === 'Partners & suppliers' ? '<div class="note">+ ' + (openList.length - 8) + ' more</div>' :
+        '<div class="more" data-person="' + esc(n) + '">+ ' + (openList.length - 8) + ' more in All topics</div>';
+      if (!openList.length) h += '<div class="note">All done.</div>';
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+  function mini(t) {
+    return '<div class="mini"><div class="t" data-edit="' + esc(t.id) + '">' + esc(t.topic) +
+      (t.priority === 'High' ? '<span class="pill high">High</span>' : '') +
+      '<small>' + esc(t.id) + ' · ' + esc(t.workstream) + '</small></div>' +
+      '<div>' + statusSelect(t) + '</div>' +
+      '<div class="due ' + dueClass(t) + '" style="font-size:12px;text-align:right">' + fmt(t.due) + '</div>' +
+      '<div>' + folderBtn(t) + '</div></div>';
+  }
+
+  function viewAll() {
+    var q = filters.q.toLowerCase();
+    var items = D.topics.filter(function (t) {
+      if (filters.owner && !owns(t, filters.owner)) return false;
+      if (filters.ws && t.workstream !== filters.ws) return false;
+      if (filters.status === 'open' && !open(t)) return false;
+      if (filters.status && filters.status !== 'open' && filters.status !== 'all' && t.status !== filters.status) return false;
+      if (q && (t.id + ' ' + t.topic + ' ' + t.notes + ' ' + t.owner).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    var h = bar(true, true);
+    D.workstreams.concat(['Other']).forEach(function (ws) {
+      var g = items.filter(function (t) { return ws === 'Other' ? D.workstreams.indexOf(t.workstream) < 0 : t.workstream === ws; }).sort(byDue);
+      if (g.length) h += list(esc(ws), g, '');
+    });
+    if (!items.length) h += '<div class="list"><div class="empty">No topics match these filters.</div></div>';
+    return h;
+  }
+
+  function bar(withOwner, full) {
+    var h = '<div class="bar">';
+    if (full) h += '<input type="search" id="q" placeholder="Search topics, notes, owners" value="' + esc(filters.q) + '">';
+    if (withOwner) {
+      h += '<select id="fOwner"><option value="">' + (full ? 'Everyone' : 'Whole team') + '</option>' +
+        allOwnerNames().map(function (n) { return '<option' + (n === (full ? filters.owner : weekWho) ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select>';
+    }
+    if (full) {
+      h += '<select id="fWs"><option value="">All workstreams</option>' + D.workstreams.map(function (w) { return '<option' + (w === filters.ws ? ' selected' : '') + '>' + esc(w) + '</option>'; }).join('') + '</select>';
+      h += '<select id="fStatus">' + [['open', 'Open (not done)'], ['all', 'All statuses']].concat(D.statuses.map(function (s) { return [s, s]; }))
+        .map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === filters.status ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+    }
+    return h + '</div>';
+  }
+
+  function render() {
+    var h = view === 'week' ? viewWeek() : view === 'people' ? viewPeople() : viewAll();
+    $('main').innerHTML = h;
+    var q = $('q'); if (q) q.oninput = function () { filters.q = q.value; var pos = q.selectionStart; render(); var q2 = $('q'); q2.focus(); q2.setSelectionRange(pos, pos); };
+    var fo = $('fOwner'); if (fo) fo.onchange = function () { if (view === 'week') weekWho = fo.value; else filters.owner = fo.value; render(); };
+    var fw = $('fWs'); if (fw) fw.onchange = function () { filters.ws = fw.value; render(); };
+    var fs = $('fStatus'); if (fs) fs.onchange = function () { filters.status = fs.value; render(); };
+  }
+
+  /* ---------- events ---------- */
+  function boot() {
+    if (D.parentFolderUrl) $('driveLink').href = D.parentFolderUrl; else $('driveLink').hidden = true;
+    $('sheetLink').href = D.sheetUrl;
+    $('who').textContent = 'Synced ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    $('f-workstream').innerHTML = D.workstreams.map(function (w) { return '<option>' + esc(w) + '</option>'; }).join('');
+    $('f-status').innerHTML = D.statuses.map(function (s) { return '<option>' + s + '</option>'; }).join('');
+    $('f-priority').innerHTML = D.priorities.map(function (s) { return '<option>' + s + '</option>'; }).join('');
+    $('ownerList').innerHTML = allOwnerNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
+  }
+
+  $('nav').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    view = b.dataset.v;
+    [].forEach.call($('nav').children, function (x) { x.classList.toggle('on', x === b); });
+    render();
+  };
+  $('main').addEventListener('change', function (e) {
+    var id = e.target.dataset && e.target.dataset.status; if (!id) return;
+    var t = find(id), old = t.status, val = e.target.value;
+    t.status = val;
+    render();
+    call('setStatus', [id, val], function () { toast(id + ' is now ' + val); }, function () { t.status = old; render(); });
+  });
+  $('main').addEventListener('click', function (e) {
+    var ed = e.target.closest('[data-edit]'); if (ed) return openModal(find(ed.dataset.edit));
+    var mk = e.target.closest('[data-mkfolder]');
+    if (mk) {
+      var id = mk.dataset.mkfolder; mk.disabled = true;
+      return call('createFolderFor', [id], function (url) { find(id).folder = url; render(); toast('Folder created, open it with the folder button'); });
+    }
+    var more = e.target.closest('[data-person]');
+    if (more) { filters.owner = more.dataset.person; filters.status = 'open'; $('nav').children[2].click(); }
+  });
+  $('addBtn').onclick = function () { if (D) openModal(null); };
+  $('refreshBtn').onclick = function () { load(); };
+  $('cancelBtn').onclick = closeModal;
+  $('shade').onclick = function (e) { if (e.target === $('shade')) closeModal(); };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+  function find(id) { return D.topics.filter(function (t) { return t.id === id; })[0]; }
+
+  function openModal(t) {
+    editing = t;
+    var v = t || { workstream: filters.ws || D.workstreams[0], owner: D.meName || '', status: 'Not started', priority: 'Medium', start: D.today };
+    $('mTitle').textContent = t ? t.id + ' · edit topic' : 'New topic';
+    ['topic', 'workstream', 'owner', 'start', 'due', 'status', 'priority', 'depends', 'notes', 'source', 'folder'].forEach(function (k) {
+      $('f-' + k).value = v[k] || '';
+    });
+    var ro = !!(t && t.private);
+    [].forEach.call($('form').elements, function (el) { el.disabled = ro; });
+    $('saveBtn').style.display = ro ? 'none' : '';
+    $('delBtn').style.display = t && !ro ? '' : 'none';
+    $('openFolder').style.display = v.folder ? '' : 'none';
+    $('openFolder').href = v.folder || '#';
+    $('mNote').textContent = ro ? 'Private topic: edit it in your private planning file (Hyperscout Private Planning, tab Private topics).' :
+      (t ? 'Last updated ' + (t.updated ? fmt(t.updated) : 'unknown') + '.' : 'A Drive folder is created for the new topic when you save.');
+    $('shade').classList.add('on');
+    if (!ro) $('f-topic').focus();
+  }
+  function closeModal() { $('shade').classList.remove('on'); editing = null; armed = false; $('delBtn').textContent = 'Remove topic'; }
+
+  $('saveBtn').onclick = function () {
+    var t = {};
+    ['topic', 'workstream', 'owner', 'start', 'due', 'status', 'priority', 'depends', 'notes', 'source', 'folder'].forEach(function (k) { t[k] = $('f-' + k).value.trim(); });
+    if (!t.topic) return toast('Write what the topic is.', true);
+    if (!t.owner) return toast('Add an owner.', true);
+    if (t.start && t.due && t.start > t.due) return toast('Due date is before the start date.', true);
+    if (editing) t.id = editing.id;
+    $('saveBtn').disabled = true; $('saveBtn').textContent = 'Saving...';
+    call('saveTopic', [t], function (saved) {
+      $('saveBtn').disabled = false; $('saveBtn').textContent = 'Save';
+      var i = D.topics.findIndex(function (x) { return x.id === saved.id; });
+      if (i >= 0) D.topics[i] = saved; else D.topics.push(saved);
+      boot(); closeModal(); render();
+      toast(saved.id + ' saved' + (saved.folder ? ', folder ready' : '') + (saved.folderError ? '. Folder not created: ' + saved.folderError : ''));
+    });
+    setTimeout(function () { $('saveBtn').disabled = false; $('saveBtn').textContent = 'Save'; }, 15000);
+  };
+  var armed = false;
+  $('delBtn').onclick = function () {
+    if (!editing) return;
+    var id = editing.id;
+    if (!armed) { armed = true; $('delBtn').textContent = 'Click again to remove ' + id; return; }
+    armed = false; $('delBtn').textContent = 'Removing...'; $('delBtn').disabled = true;
+    call('deleteTopic', [id], function () {
+      D.topics = D.topics.filter(function (t) { return t.id !== id; });
+      $('delBtn').disabled = false; $('delBtn').textContent = 'Remove topic';
+      closeModal(); render(); toast(id + ' removed. Its Drive folder is kept.');
+    }, function () { $('delBtn').disabled = false; $('delBtn').textContent = 'Remove topic'; });
+  };
+  var tt;
+  function toast(msg, err) {
+    var el = $('toast'); el.textContent = msg; el.className = 'toast' + (err ? ' err' : ''); el.style.display = 'block';
+    clearTimeout(tt); tt = setTimeout(function () { el.style.display = 'none'; }, err ? 6000 : 2500);
+  }
+
+  load();
+})();
+</script>
