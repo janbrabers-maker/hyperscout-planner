@@ -1,0 +1,31 @@
+name: Push to Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps-script/**']
+  workflow_dispatch:
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    env:
+      HAS_CREDS: ${{ secrets.CLASPRC_JSON != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when clasp is not set up
+        if: env.HAS_CREDS != 'true'
+        run: echo 'Add CLASPRC_JSON and SCRIPT_ID secrets to enable deploys (see README).'
+      - uses: actions/setup-node@v4
+        if: env.HAS_CREDS == 'true'
+        with:
+          node-version: '20'
+      - run: npm i -g @google/clasp
+        if: env.HAS_CREDS == 'true'
+      - name: Write clasp credentials
+        if: env.HAS_CREDS == 'true'
+        run: |
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+          echo '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"apps-script"}' > .clasp.json
+      - run: clasp push --force
+        if: env.HAS_CREDS == 'true'
