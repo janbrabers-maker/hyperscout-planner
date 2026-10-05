@@ -1,11 +1,11 @@
 /**
  * Hyperscout Planner
- * Web app + Monday email on top of the "Hyperscout Topics (planner app)" Google Sheet.
+ * Web app + daily email (every work day) on top of the "Hyperscout Topics (planner app)" Google Sheet.
  *
  * The sheet is the database:
  *   Topics   : one row per topic (ID, Workstream, Topic, Owner, Start, Due, Status,
  *              Priority, Depends on / blocks, Source, Notes, Drive folder, Updated)
- *   People   : Name, Email, Monday email (Yes/No), Note
+ *   People   : Name, Email, Daily email (Yes/No; the column was called Monday email), Note
  *   Settings : key / value pairs (private file ID, Drive parent folder, app URL, ...)
  *
  * The web app runs as the person who opens it, so everyone only sees what their
@@ -44,9 +44,9 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('Hyperscout')
     .addItem('Open the planner app', 'menuOpenApp')
     .addSeparator()
-    .addItem('Install: folders, sharing, Monday email', 'install')
+    .addItem('Install: folders, sharing, daily email', 'install')
     .addItem('Create missing Drive folders', 'menuCreateMissingFolders')
-    .addItem('Send the Monday email now (test)', 'sendWeeklyEmail')
+    .addItem('Send the daily email now (test)', 'sendTestEmail')
     .addToUi();
 }
 
@@ -69,8 +69,8 @@ function menuCreateMissingFolders() {
  * One-time setup, run by Jan from the sheet menu:
  * 1. creates the "Hyperscout Planning" Drive folder (with one subfolder per workstream)
  * 2. creates a folder for every topic that has none
- * 3. shares the sheet and the folder with everyone on the People tab marked Monday email = Yes
- * 4. installs the weekly email trigger (Monday, 07:00-08:00 Amsterdam)
+ * 3. shares the sheet and the folder with everyone on the People tab marked Daily email = Yes
+ * 4. installs the daily email trigger (every day 07:00-08:00 Amsterdam; it skips Saturday and Sunday)
  */
 function install() {
   var parent = getParentFolder_();
@@ -91,12 +91,12 @@ function install() {
   });
   var hour = Number(getSetting_('Email hour (Amsterdam)')) || 7;
   ScriptApp.newTrigger('sendWeeklyEmail').timeBased()
-    .onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(hour).inTimezone(TZ).create();
+    .everyDays(1).atHour(hour).inTimezone(TZ).create();
 
   var msg = 'Drive folder: ' + parent.getUrl() + '\n' +
     created + ' topic folder(s) created.\n' +
     'Shared with: ' + (shared.join(', ') || 'nobody new') + '\n' +
-    'Monday email scheduled between ' + hour + ':00 and ' + (hour + 1) + ':00.';
+    'Daily email (Monday to Friday) scheduled between ' + hour + ':00 and ' + (hour + 1) + ':00.';
   Logger.log(msg);
   try { SpreadsheetApp.getUi().alert('Hyperscout planner installed', msg, SpreadsheetApp.getUi().ButtonSet.OK); } catch (e) {}
   return msg;
@@ -220,18 +220,24 @@ function createFolderFor(id) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Monday email                                                        */
+/* Daily email (Monday to Friday)                                      */
 /* ------------------------------------------------------------------ */
 
 /**
- * Runs every Monday (trigger, as Jan). One email per person marked Monday email = Yes:
- *  - overdue topics
- *  - topics due this week, or running this week (started and not done)
+ * Runs every work day (daily trigger, as Jan; Saturday and Sunday are skipped).
+ * One email per person marked Daily email = Yes:
+ *  - overdue topics (due before today)
+ *  - due today
+ *  - the rest of this week: due by Sunday, or running this week (started and not done)
  *  - next week, so nothing comes as a surprise
  *  - a short line per teammate for the team picture
  * Jan's email also includes his private topics.
  */
-function sendWeeklyEmail() {
+function sendTestEmail() { return sendWeeklyEmail(true); }
+
+function sendWeeklyEmail(force) {
+  var dow = Number(Utilities.formatDate(new Date(), TZ, 'u')); // 1 = Monday ... 7 = Sunday
+  if (force !== true && dow > 5) return [];
   var people = readPeople_();
   var shared = readTopics_();
   var priv = readPrivateTopics_();
@@ -249,32 +255,35 @@ function sendWeeklyEmail() {
     var pool = isJan ? shared.concat(priv) : shared;
     var mine = pool.filter(function (t) { return t.status !== 'Done' && ownsTopic_(t, p.name); });
 
-    var b = bucket_(mine, weekStart, weekEnd, nextEnd);
-    var overdue = b.overdue, thisWeek = b.thisWeek, nextWeek = b.nextWeek;
-    [overdue, thisWeek, nextWeek].forEach(sortByDue_);
+    var b = bucket_(mine, today, weekStart, weekEnd, nextEnd);
+    var overdue = b.overdue, dueToday = b.today, thisWeek = b.thisWeek, nextWeek = b.nextWeek;
+    [overdue, dueToday, thisWeek, nextWeek].forEach(sortByDue_);
 
-    var team = teamLines_(shared, people, p.name, weekStart, weekEnd);
+    var team = teamLines_(shared, people, p.name, today, weekEnd);
     var subject = 'Hyperscout · week ' + weekNumber_(weekStart) + ' · ' +
-      (overdue.length + thisWeek.length) + ' topic(s) for you';
-    var html = emailHtml_(p.name, weekStart, weekEnd, overdue, thisWeek, nextWeek, team, appUrl);
+      Utilities.formatDate(today, TZ, 'EEE d MMM') + ' · ' +
+      (overdue.length + dueToday.length + thisWeek.length) + ' topic(s) for you';
+    var html = emailHtml_(p.name, today, weekStart, weekEnd, overdue, dueToday, thisWeek, nextWeek, team, appUrl);
     MailApp.sendEmail({ to: p.email, subject: subject, htmlBody: html, name: 'Hyperscout planner' });
     sent.push(p.email);
   });
-  Logger.log('Monday email sent to: ' + sent.join(', '));
+  Logger.log('Daily email sent to: ' + sent.join(', '));
   return sent;
 }
 
 /**
- * Overdue  : due before this Monday.
+ * Overdue  : due before today.
+ * Today    : due today.
  * This week: due by Sunday, or in progress, or starting this week.
  * Next week: starts or is due next week.
  */
-function bucket_(list, weekStart, weekEnd, nextEnd) {
-  var out = { overdue: [], thisWeek: [], nextWeek: [] };
+function bucket_(list, today, weekStart, weekEnd, nextEnd) {
+  var out = { overdue: [], today: [], thisWeek: [], nextWeek: [] };
   list.forEach(function (t) {
     var due = t.due ? parseIso_(t.due) : null;
     var start = t.start ? parseIso_(t.start) : null;
-    if (due && due < weekStart) out.overdue.push(t);
+    if (due && due < today) out.overdue.push(t);
+    else if (due && due.getTime() === today.getTime()) out.today.push(t);
     else if ((due && due <= weekEnd) || t.status === 'In progress' ||
              (start && start >= weekStart && start <= weekEnd)) out.thisWeek.push(t);
     else if ((start && start > weekEnd && start <= nextEnd) || (due && due > weekEnd && due <= nextEnd)) out.nextWeek.push(t);
@@ -282,20 +291,20 @@ function bucket_(list, weekStart, weekEnd, nextEnd) {
   return out;
 }
 
-function teamLines_(topics, people, exceptName, weekStart, weekEnd) {
+function teamLines_(topics, people, exceptName, today, weekEnd) {
   var lines = [];
   people.forEach(function (p) {
     if (p.name === exceptName) return;
     var open = topics.filter(function (t) { return t.status !== 'Done' && ownsTopic_(t, p.name); });
     if (!open.length) return;
     var due = open.filter(function (t) { return t.due && parseIso_(t.due) <= weekEnd; });
-    var late = open.filter(function (t) { return t.due && parseIso_(t.due) < weekStart; });
+    var late = open.filter(function (t) { return t.due && parseIso_(t.due) < today; });
     lines.push({ name: p.name, open: open.length, due: due.length, late: late.length });
   });
   return lines;
 }
 
-function emailHtml_(name, weekStart, weekEnd, overdue, thisWeek, nextWeek, team, appUrl) {
+function emailHtml_(name, today, weekStart, weekEnd, overdue, dueToday, thisWeek, nextWeek, team, appUrl) {
   var navy = '#132744', beige = '#ebebe1', orange = '#994214';
   var fmt = function (d) { return Utilities.formatDate(d, TZ, 'd MMM'); };
   var h = [];
@@ -303,10 +312,11 @@ function emailHtml_(name, weekStart, weekEnd, overdue, thisWeek, nextWeek, team,
   h.push('<div style="background:' + navy + ';color:#fff;padding:18px 22px">' +
     '<div style="font-size:12px;letter-spacing:1px;opacity:.8">HYPERSCOUT · WEEK ' + weekNumber_(weekStart) + '</div>' +
     '<div style="font-size:20px;font-weight:bold;margin-top:4px">Good morning ' + esc_(name) + '</div>' +
-    '<div style="font-size:13px;opacity:.85;margin-top:4px">' + fmt(weekStart) + ' to ' + fmt(weekEnd) + '</div></div>');
+    '<div style="font-size:13px;opacity:.85;margin-top:4px">' + Utilities.formatDate(today, TZ, 'EEEE d MMMM') + ' · week ' + fmt(weekStart) + ' to ' + fmt(weekEnd) + '</div></div>');
   h.push('<div style="padding:4px 22px 18px;background:#fff">');
   h.push(section_('Overdue', overdue, '#b3261e', 'Nothing overdue.'));
-  h.push(section_('This week', thisWeek, navy, 'Nothing due this week.'));
+  h.push(section_('Today', dueToday, orange, 'Nothing due today.'));
+  h.push(section_('Rest of this week', thisWeek, navy, 'Nothing else this week.'));
   h.push(section_('Coming up next week', nextWeek, '#5a6270', 'Nothing starting next week.'));
   if (team.length) {
     h.push('<h3 style="font-size:14px;color:' + navy + ';margin:22px 0 6px">The team</h3>');
@@ -324,7 +334,7 @@ function emailHtml_(name, weekStart, weekEnd, overdue, thisWeek, nextWeek, team,
       ';color:#fff;text-decoration:none;padding:10px 16px;font-weight:bold;font-size:13px">Open the planner</a></p>');
   }
   h.push('</div><div style="background:' + beige + ';padding:10px 22px;font-size:11px;color:#5a6270">' +
-    'Sent every Monday by the Hyperscout planner. Update a status in the app and it shows up here next week.</div></div>');
+    'Sent every work day by the Hyperscout planner. Update a status in the app and tomorrow\'s email follows it.</div></div>');
   return h.join('');
 }
 

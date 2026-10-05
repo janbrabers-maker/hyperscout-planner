@@ -112,7 +112,7 @@
   </nav>
   <div class="spacer"></div>
   <span class="who" id="who"></span>
-  <a class="btn ghost" id="driveLink" target="_blank" style="text-decoration:none">Drive</a>
+  <a class="btn ghost" id="driveLink" target="_blank" style="text-decoration:none" title="The Hyperscout Planning folder in Google Drive: one folder per topic">Open Drive folder ↗</a>
   <button class="btn" id="addBtn">+ Add topic</button>
 </header>
 
@@ -193,7 +193,7 @@
     var out = { overdue: [], week: [], next: [] };
     list.filter(open).forEach(function (t) {
       var d = parse(t.due), s = parse(t.start);
-      if (d && d < ws) out.overdue.push(t);
+      if (d && d < today()) out.overdue.push(t);
       else if ((d && d <= we) || t.status === 'In progress' || (s && s >= ws && s <= we)) out.week.push(t);
       else if ((s && s > we && s <= ne) || (d && d > we && d <= ne)) out.next.push(t);
     });
@@ -250,7 +250,7 @@
     h += '<div class="kpis">' + kpi(b.overdue.length, 'overdue', true) + kpi(b.week.length, 'this week') +
       kpi(b.next.length, 'next week') + kpi(pool.filter(open).length, 'open in total') + '</div>';
     h += '<div class="note">Week of ' + ws.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) +
-      (who ? ', showing ' + esc(who) : ', whole team') + '. Same rules as the Monday email.</div>';
+      (who ? ', showing ' + esc(who) : ', whole team') + '. Same rules as the daily email.</div>';
     h += list('Overdue', b.overdue, 'Nothing overdue.');
     h += list('This week', b.week, 'Nothing due this week.');
     h += list('Coming up next week', b.next, 'Nothing starting next week.');
