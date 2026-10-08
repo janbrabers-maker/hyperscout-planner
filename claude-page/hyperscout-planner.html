@@ -123,6 +123,36 @@
   .t { overflow-wrap: anywhere; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  /* partners */
+  .prow { display: grid; grid-template-columns: minmax(150px, 1.1fr) 2fr 104px 140px; gap: 12px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--row-line); }
+  .prow:first-child { border-top: 0; }
+  .prow:hover { background: var(--hover); }
+  .prow > div { min-width: 0; }
+  .pname { background: none; border: 0; padding: 0; font: inherit; font-family: 'Space Grotesk', Arial, sans-serif; font-weight: 700; font-size: 15px; color: var(--heading); cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .pname:hover { text-decoration-color: var(--orange); }
+  .prow .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .prow .next { font-size: 13px; overflow-wrap: anywhere; }
+  .prow .ndate { font-size: 13px; text-align: right; white-space: nowrap; }
+  .prow .ndate.late { color: var(--red); font-weight: 700; }
+  .prow .ndate.soon { color: var(--amber-ink); font-weight: 700; }
+  .prow select { font: inherit; font-size: 12px; padding: 5px 6px; border-radius: 12px; border: 1px solid transparent; width: 100%; cursor: pointer; color: var(--ink); }
+  .ps-Prospect, .ps-Parked { background: var(--grey-bg); }
+  .ps-In-talks, .ps-Proposal-sent { background: var(--blue-bg); }
+  .ps-Negotiating { background: var(--amber-bg); }
+  .ps-Signed, .ps-Live { background: var(--green-bg); color: var(--green); }
+  .ps-Lost { background: var(--red-bg); color: var(--red); }
+  .prow.closed .pname { color: var(--muted); }
+  .pipe { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .pipe button { font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .pipe button b { font-family: 'Space Grotesk'; margin-left: 4px; color: var(--heading); }
+  .pipe button.on { border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
+  .statuspick { display: flex; gap: 6px; flex-wrap: wrap; }
+  .statuspick button { font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+  .statuspick button.on { border-color: transparent; font-weight: 700; box-shadow: inset 0 0 0 2px var(--orange); }
+  @media (max-width: 760px) {
+    .prow { grid-template-columns: 1fr 120px; }
+    .prow .next, .prow .ndate { display: none; }
+  }
 </style>
 
 <header>
@@ -131,6 +161,7 @@
     <button data-v="week" class="on">This week</button>
     <button data-v="people">People</button>
     <button data-v="all">All topics</button>
+    <button data-v="partners">Tradeshow partners</button>
   </nav>
   <div class="spacer"></div>
   <span class="who sync" id="who" style="color:var(--header-dim)"></span>
@@ -168,6 +199,27 @@
     </div>
   </div>
 </div>
+<div class="shade" id="pshade">
+  <div class="modal">
+    <h3 id="pTitle">Partner</h3>
+    <div class="field full" style="margin-bottom:14px"><label>Status (click to change)</label><div class="statuspick" id="pStatusPick"></div></div>
+    <form id="pform" class="grid2" autocomplete="off">
+      <div class="field"><label for="p-name">Partner</label><input id="p-name" required></div>
+      <div class="field"><label for="p-type">Type</label><input id="p-type" list="pTypeList"><datalist id="pTypeList"></datalist></div>
+      <div class="field"><label for="p-owner">Owner (use + for two people)</label><input id="p-owner" list="ownerList"></div>
+      <div class="field"><label for="p-contact">Contact</label><input id="p-contact"></div>
+      <div class="field full"><label for="p-next">Next step</label><input id="p-next"></div>
+      <div class="field"><label for="p-nextdate">Next date</label><input type="date" id="p-nextdate"></div>
+      <div class="field"><label for="p-topics">Related topics (IDs)</label><input id="p-topics" placeholder="e.g. T15, T16"></div>
+      <div class="field full"><label for="p-notes">Notes</label><textarea id="p-notes"></textarea></div>
+    </form>
+    <div class="note" id="pNote"></div>
+    <div class="actions">
+      <button class="btn" id="pSaveBtn">Save</button>
+      <button class="btn ghost" id="pCancelBtn">Cancel</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -196,6 +248,8 @@
   };
   var PREFIX = { 'Tradeshows & Pitti': 'T', 'Brands': 'B', 'Producers': 'P', 'Tech & data': 'X', 'Puglia grant & Italia': 'G', 'HR': 'H', 'Finance': 'F', 'Legal & admin': 'L' };
   var STATUSES = ['Not started', 'In progress', 'Waiting', 'Blocked', 'Done'];
+  var P_STATUSES = ['Prospect', 'In talks', 'Proposal sent', 'Negotiating', 'Signed', 'Live', 'Parked', 'Lost'];
+  var P_CLOSED = ['Parked', 'Lost'];
   var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var MCP = null;
 
@@ -243,6 +297,17 @@
       status: STATUSES.indexOf(g(6)) >= 0 ? g(6) : 'Not started', priority: g(7) || 'Medium', depends: g(8), source: g(9),
       notes: g(10), folder: priv ? '' : g(11), updated: priv ? '' : sheetToIso(g(12)), private: !!priv };
   }
+  function rowToPartner(r) {
+    var g = function (i) { return r[i] == null ? '' : String(r[i]).trim(); };
+    return { name: g(0), type: g(1), status: P_STATUSES.indexOf(g(2)) >= 0 ? g(2) : 'Prospect', owner: g(3), next: g(4),
+      nextDate: sheetToIso(g(5)), topics: g(6), contact: g(7), notes: g(8), updated: sheetToIso(g(9)) };
+  }
+  async function findPartnerRow(name) {
+    var col = await values(SHEET, 'Partners!A1:A');
+    var key = String(name || '').trim().toLowerCase();
+    for (var i = 1; i < col.length; i++) if (String(col[i][0] || '').trim().toLowerCase() === key) return { row: i + 1, col: col };
+    return { row: 0, col: col };
+  }
   async function findRow(id) {
     var col = await values(SHEET, 'Topics!A1:A');
     for (var i = 1; i < col.length; i++) if (String(col[i][0] || '') === String(id)) return { row: i + 1, col: col };
@@ -254,15 +319,18 @@
       var res = await Promise.all([
         values(SHEET, 'Topics!A1:M'),
         values(SHEET, 'People!A1:C'),
-        values(PRIVATE_FILE, "'Private topics'!A4:K").catch(function () { return null; })
+        values(PRIVATE_FILE, "'Private topics'!A4:K").catch(function () { return null; }),
+        values(SHEET, 'Partners!A1:J').catch(function () { return null; })
       ]);
+      var partners = (res[3] || []).slice(1).filter(function (r) { return r && r[0]; }).map(rowToPartner);
       var topics = res[0].slice(1).filter(function (r) { return r && r[0]; }).map(function (r) { return rowToTopic(r, false); });
       var priv = (res[2] || []).filter(function (r) { return r && r[0]; }).map(function (r) { return rowToTopic(r, true); });
       var people = res[1].slice(1).filter(function (r) { return r && r[0]; }).map(function (r) { return { name: String(r[0]).trim(), email: String(r[1] || '').trim() }; });
       return { me: '', meName: 'Jan', today: isoOf(new Date()), topics: topics.concat(priv), people: people,
         workstreams: Object.keys(PREFIX), statuses: STATUSES, priorities: ['High', 'Medium', 'Low'],
         parentFolderUrl: 'https://drive.google.com/drive/folders/' + PARENT_FOLDER,
-        sheetUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET + '/edit', privateOk: res[2] !== null };
+        sheetUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET + '/edit', privateOk: res[2] !== null,
+        partners: partners, partnersOk: res[3] !== null };
     },
     saveTopic: async function (t) {
       var f = await findRow(t.id || '__new__'), row = f.row;
@@ -299,6 +367,29 @@
       var f = await findRow(id);
       if (!f.row) return true;
       await tool('Google Sheets', 'update_spreadsheet', { spreadsheetId: SHEET, requests: [{ deleteDimension: { range: { sheetId: 0, dimension: 'ROWS', startIndex: f.row - 1, endIndex: f.row } } }] });
+      return true;
+    },
+    savePartner: async function (p, originalName) {
+      var f = await findPartnerRow(originalName || p.name), row = f.row;
+      if (originalName && !row) throw err('gone', originalName + ' is no longer on the Partners tab. Reload the page.');
+      if (!originalName) {
+        if (row) throw err('dup', p.name + ' is already on the list.');
+        row = Math.max(f.col.length, 1) + 1;
+      } else if (p.name.toLowerCase() !== originalName.toLowerCase()) {
+        var clash = await findPartnerRow(p.name);
+        if (clash.row) throw err('dup', p.name + ' is already on the list.');
+      }
+      var today = isoOf(new Date());
+      await tool('Google Sheets', 'update_values', { spreadsheetId: SHEET, range: 'Partners!A' + row + ':J' + row, values: [[
+        p.name, p.type || '', p.status || 'Prospect', p.owner || '', p.next || '', isoToSheet(p.nextDate), p.topics || '', p.contact || '', p.notes || '', isoToSheet(today)]] });
+      p.updated = today;
+      return p;
+    },
+    setPartnerStatus: async function (name, status) {
+      var f = await findPartnerRow(name);
+      if (!f.row) throw err('gone', name + ' is no longer on the Partners tab. Reload the page.');
+      await tool('Google Sheets', 'update_values', { spreadsheetId: SHEET, range: 'Partners!C' + f.row + ':J' + f.row,
+        values: [[status, null, null, null, null, null, null, isoToSheet(isoOf(new Date()))]] });
       return true;
     },
     createFolderFor: async function (id) {
@@ -474,6 +565,42 @@
     return h;
   }
 
+  var pFilter = '';
+  function pslug(s) { return 'ps-' + s.replace(/ /g, '-'); }
+  function pDateClass(p) {
+    if (!p.nextDate || P_CLOSED.indexOf(p.status) >= 0) return '';
+    var d = parse(p.nextDate), n = today();
+    if (d < n) return 'late';
+    if ((d - n) / 864e5 <= 7) return 'soon';
+    return '';
+  }
+  function findPartner(name) { return D.partners.filter(function (p) { return p.name === name; })[0]; }
+  function viewPartners() {
+    if (!D.partnersOk) return '<div class="banner err"><b>No Partners tab.</b> The sheet has no tab called Partners, or it could not be read. Add it, then press Refresh.</div>';
+    var counts = {}; P_STATUSES.forEach(function (s) { counts[s] = 0; });
+    D.partners.forEach(function (p) { counts[p.status]++; });
+    var h = '<div class="note" style="margin:0 0 12px">Click a partner name to change its status or details. Add a new one with + Add partner at the top. Everything is saved on the Partners tab of the sheet.</div>';
+    h += '<div class="pipe"><button data-pf=""' + (pFilter ? '' : ' class="on"') + '>All<b>' + D.partners.length + '</b></button>' +
+      P_STATUSES.map(function (s) { return '<button data-pf="' + esc(s) + '"' + (pFilter === s ? ' class="on"' : '') + '>' + esc(s) + '<b>' + counts[s] + '</b></button>'; }).join('') + '</div>';
+    var items = D.partners.filter(function (p) { return !pFilter || p.status === pFilter; });
+    items.sort(function (a, b) {
+      var ca = P_CLOSED.indexOf(a.status) >= 0, cb = P_CLOSED.indexOf(b.status) >= 0;
+      if (ca !== cb) return ca ? 1 : -1;
+      return String(a.nextDate || '9999').localeCompare(String(b.nextDate || '9999')) || a.name.localeCompare(b.name);
+    });
+    h += '<div class="list">' + (items.length ? items.map(prow).join('') : '<div class="empty">' + (pFilter ? 'No partners with status ' + esc(pFilter) + '.' : 'No partners yet. Add the first one.') + '</div>') + '</div>';
+    return h;
+  }
+  function prow(p) {
+    return '<div class="prow' + (P_CLOSED.indexOf(p.status) >= 0 ? ' closed' : '') + '">' +
+      '<div><button class="pname" data-pedit="' + esc(p.name) + '">' + esc(p.name) + '</button>' +
+        '<div class="sub">' + esc([p.type, p.owner].filter(Boolean).join(' · ')) + (p.topics ? ' · ' + esc(p.topics) : '') + '</div></div>' +
+      '<div class="next">' + (p.next ? esc(p.next) : '<span class="sub">No next step</span>') + '</div>' +
+      '<div class="ndate ' + pDateClass(p) + '">' + fmt(p.nextDate) + '</div>' +
+      '<div><select class="' + pslug(p.status) + '" data-pstatus="' + esc(p.name) + '" aria-label="Status of ' + esc(p.name) + '">' +
+        P_STATUSES.map(function (s) { return '<option' + (s === p.status ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></div></div>';
+  }
+
   function bar(withOwner, full) {
     var h = '<div class="bar">';
     if (full) h += '<input type="search" id="q" placeholder="Search topics, notes, owners" value="' + esc(filters.q) + '">';
@@ -490,7 +617,7 @@
   }
 
   function render() {
-    var h = view === 'week' ? viewWeek() : view === 'people' ? viewPeople() : viewAll();
+    var h = view === 'week' ? viewWeek() : view === 'people' ? viewPeople() : view === 'partners' ? viewPartners() : viewAll();
     $('main').innerHTML = h;
     var q = $('q'); if (q) q.oninput = function () { filters.q = q.value; var pos = q.selectionStart; render(); var q2 = $('q'); q2.focus(); q2.setSelectionRange(pos, pos); };
     var fo = $('fOwner'); if (fo) fo.onchange = function () { if (view === 'week') weekWho = fo.value; else filters.owner = fo.value; render(); };
@@ -513,9 +640,16 @@
     var b = e.target.closest('button'); if (!b) return;
     view = b.dataset.v;
     [].forEach.call($('nav').children, function (x) { x.classList.toggle('on', x === b); });
+    $('addBtn').textContent = view === 'partners' ? '+ Add partner' : '+ Add topic';
     render();
   };
   $('main').addEventListener('change', function (e) {
+    var pn = e.target.dataset && e.target.dataset.pstatus;
+    if (pn) {
+      var p = findPartner(pn), was = p.status, nv = e.target.value;
+      p.status = nv; render();
+      return call('setPartnerStatus', [pn, nv], function () { toast(pn + ' is now ' + nv); }, function () { p.status = was; render(); });
+    }
     var id = e.target.dataset && e.target.dataset.status; if (!id) return;
     var t = find(id), old = t.status, val = e.target.value;
     t.status = val;
@@ -524,6 +658,9 @@
   });
   $('main').addEventListener('click', function (e) {
     var ed = e.target.closest('[data-edit]'); if (ed) return openModal(find(ed.dataset.edit));
+    var pe = e.target.closest('[data-pedit]'); if (pe) return openPartner(findPartner(pe.dataset.pedit));
+    if (e.target.closest('#addPartner')) return openPartner(null);
+    var pf = e.target.closest('[data-pf]'); if (pf) { pFilter = pf.dataset.pf; return render(); }
     var mk = e.target.closest('[data-mkfolder]');
     if (mk) {
       var id = mk.dataset.mkfolder; mk.disabled = true;
@@ -532,11 +669,52 @@
     var more = e.target.closest('[data-person]');
     if (more) { filters.owner = more.dataset.person; filters.status = 'open'; $('nav').children[2].click(); }
   });
-  $('addBtn').onclick = function () { if (D) openModal(null); };
+  $('addBtn').onclick = function () { if (D) { if (view === 'partners') openPartner(null); else openModal(null); } };
   $('refreshBtn').onclick = function () { load(); };
   $('cancelBtn').onclick = closeModal;
   $('shade').onclick = function (e) { if (e.target === $('shade')) closeModal(); };
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeModal(); closePartner(); } });
+
+  /* ---------- partner modal ---------- */
+  var pEditing = null, pStatus = 'Prospect';
+  function paintPick() {
+    $('pStatusPick').innerHTML = P_STATUSES.map(function (s) {
+      return '<button type="button" class="' + pslug(s) + (s === pStatus ? ' on' : '') + '" data-pick="' + esc(s) + '">' + esc(s) + '</button>';
+    }).join('');
+  }
+  $('pStatusPick').onclick = function (e) { var b = e.target.closest('[data-pick]'); if (!b) return; pStatus = b.dataset.pick; paintPick(); };
+  function openPartner(p) {
+    pEditing = p;
+    var v = p || { type: 'Tradeshow', owner: D.meName || '', status: 'Prospect' };
+    pStatus = v.status || 'Prospect';
+    $('pTitle').textContent = p ? p.name : 'New partner';
+    $('p-name').value = v.name || ''; $('p-type').value = v.type || ''; $('p-owner').value = v.owner || '';
+    $('p-contact').value = v.contact || ''; $('p-next').value = v.next || ''; $('p-nextdate').value = v.nextDate || '';
+    $('p-topics').value = v.topics || ''; $('p-notes').value = v.notes || '';
+    var types = {}; ['Tradeshow', 'Trade agency', 'Trade body'].concat(D.partners.map(function (x) { return x.type; })).forEach(function (t) { if (t) types[t] = 1; });
+    $('pTypeList').innerHTML = Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
+    $('pNote').textContent = p ? 'Last updated ' + (p.updated ? fmt(p.updated) : 'unknown') + '. Saved to the Partners tab of the sheet.' : 'Saved as a new row on the Partners tab of the sheet.';
+    paintPick();
+    $('pshade').classList.add('on');
+    (p ? $('pStatusPick').querySelector('.on') : $('p-name')).focus();
+  }
+  function closePartner() { $('pshade').classList.remove('on'); pEditing = null; }
+  $('pCancelBtn').onclick = closePartner;
+  $('pshade').onclick = function (e) { if (e.target === $('pshade')) closePartner(); };
+  $('pSaveBtn').onclick = function () {
+    var p = { name: $('p-name').value.trim(), type: $('p-type').value.trim(), status: pStatus, owner: $('p-owner').value.trim(),
+      contact: $('p-contact').value.trim(), next: $('p-next').value.trim(), nextDate: $('p-nextdate').value, topics: $('p-topics').value.trim(), notes: $('p-notes').value.trim() };
+    if (!p.name) return toast('Write the partner name.', true);
+    var orig = pEditing ? pEditing.name : null;
+    if (!orig && findPartner(p.name)) return toast(p.name + ' is already on the list.', true);
+    var btn = $('pSaveBtn'); btn.disabled = true; btn.textContent = 'Saving...';
+    call('savePartner', [p, orig], function (saved) {
+      btn.disabled = false; btn.textContent = 'Save';
+      var i = orig ? D.partners.findIndex(function (x) { return x.name === orig; }) : -1;
+      if (i >= 0) D.partners[i] = saved; else D.partners.push(saved);
+      closePartner(); render(); toast(saved.name + ' saved as ' + saved.status);
+    }, function () { btn.disabled = false; btn.textContent = 'Save'; });
+  };
 
   function find(id) { return D.topics.filter(function (t) { return t.id === id; })[0]; }
 
