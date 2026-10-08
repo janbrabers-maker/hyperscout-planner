@@ -123,6 +123,21 @@
   .t { overflow-wrap: anywhere; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  /* updates */
+  .ucompose { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; margin-bottom: 18px; display: grid; grid-template-columns: 1fr 160px; gap: 10px; }
+  .ucompose .field.full { grid-column: 1 / -1; }
+  .ucompose textarea { min-height: 72px; }
+  .uday { font-family: 'Space Grotesk', Arial, sans-serif; font-size: 13px; color: var(--muted); margin: 18px 0 6px; }
+  .uitem { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; }
+  .uitem .uhead { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+  .uitem .about { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--heading); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; text-align: left; }
+  .uitem .utext { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .mupd { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
+  .mupd h4 { margin: 0 0 8px; font-family: 'Space Grotesk', Arial, sans-serif; color: var(--heading); font-size: 14px; }
+  .mupd .uadd { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+  .mupd .uadd textarea { flex: 1; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--card); color: var(--ink); min-height: 44px; resize: vertical; }
+  .mupd .uitem { padding: 8px 10px; }
+  @media (max-width: 760px) { .ucompose { grid-template-columns: 1fr; } }
   /* partners */
   .prow { display: grid; grid-template-columns: minmax(150px, 1.1fr) 2fr 104px 140px; gap: 12px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--row-line); }
   .prow:first-child { border-top: 0; }
@@ -162,6 +177,7 @@
     <button data-v="people">People</button>
     <button data-v="all">All topics</button>
     <button data-v="partners">Tradeshow partners</button>
+    <button data-v="updates">Updates</button>
   </nav>
   <div class="spacer"></div>
   <span class="who sync" id="who" style="color:var(--header-dim)"></span>
@@ -190,6 +206,7 @@
       <div class="field"><label for="f-folder">Drive folder</label><input id="f-folder" placeholder="Created automatically on save"></div>
     </form>
     <div class="note" id="mNote"></div>
+    <div class="mupd" id="mUpdates"></div>
     <div class="actions">
       <button class="btn" id="saveBtn">Save</button>
       <button class="btn ghost" id="cancelBtn">Cancel</button>
@@ -214,6 +231,7 @@
       <div class="field full"><label for="p-notes">Notes</label><textarea id="p-notes"></textarea></div>
     </form>
     <div class="note" id="pNote"></div>
+    <div class="mupd" id="pUpdates"></div>
     <div class="actions">
       <button class="btn" id="pSaveBtn">Save</button>
       <button class="btn ghost" id="pCancelBtn">Cancel</button>
@@ -320,8 +338,13 @@
         values(SHEET, 'Topics!A1:M'),
         values(SHEET, 'People!A1:C'),
         values(PRIVATE_FILE, "'Private topics'!A4:K").catch(function () { return null; }),
-        values(SHEET, 'Partners!A1:J').catch(function () { return null; })
+        values(SHEET, 'Partners!A1:J').catch(function () { return null; }),
+        values(SHEET, 'Updates!A1:E').catch(function () { return null; })
       ]);
+      var updates = (res[4] || []).slice(1).map(function (r, i) {
+        r = r || []; var g = function (k) { return r[k] == null ? '' : String(r[k]).trim(); };
+        return { row: i + 2, date: sheetToIso(g(0)), about: g(1), title: g(2), author: g(3), text: g(4) };
+      }).filter(function (u) { return u.text; });
       var partners = (res[3] || []).slice(1).filter(function (r) { return r && r[0]; }).map(rowToPartner);
       var topics = res[0].slice(1).filter(function (r) { return r && r[0]; }).map(function (r) { return rowToTopic(r, false); });
       var priv = (res[2] || []).filter(function (r) { return r && r[0]; }).map(function (r) { return rowToTopic(r, true); });
@@ -330,7 +353,7 @@
         workstreams: Object.keys(PREFIX), statuses: STATUSES, priorities: ['High', 'Medium', 'Low'],
         parentFolderUrl: 'https://drive.google.com/drive/folders/' + PARENT_FOLDER,
         sheetUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET + '/edit', privateOk: res[2] !== null,
-        partners: partners, partnersOk: res[3] !== null };
+        partners: partners, partnersOk: res[3] !== null, updates: updates, updatesOk: res[4] !== null };
     },
     saveTopic: async function (t) {
       var f = await findRow(t.id || '__new__'), row = f.row;
@@ -391,6 +414,15 @@
       await tool('Google Sheets', 'update_values', { spreadsheetId: SHEET, range: 'Partners!C' + f.row + ':J' + f.row,
         values: [[status, null, null, null, null, null, null, isoToSheet(isoOf(new Date()))]] });
       return true;
+    },
+    addUpdate: async function (u) {
+      var col = await values(SHEET, 'Updates!A1:A');
+      var row = Math.max(col.length, 1) + 1;
+      u.date = isoOf(new Date());
+      await tool('Google Sheets', 'update_values', { spreadsheetId: SHEET, range: 'Updates!A' + row + ':E' + row,
+        values: [[isoToSheet(u.date), u.about, u.title, u.author, u.text]] });
+      u.row = row;
+      return u;
     },
     createFolderFor: async function (id) {
       var t = find(id); if (!t) throw err('gone', id + ' not found.');
@@ -565,6 +597,90 @@
     return h;
   }
 
+  /* ---------- updates ---------- */
+  var uFilter = '', uQuery = '';
+  function getAuthor() { try { return localStorage.getItem('hs-author') || D.meName || ''; } catch (e) { return D.meName || ''; } }
+  function setAuthor(a) { try { localStorage.setItem('hs-author', a); } catch (e) {} }
+  function aboutTitle(about) {
+    var t = find(about); if (t) return t.topic;
+    var p = findPartner(about); if (p) return 'Partner' + (p.type ? ' (' + p.type + ')' : '');
+    return '';
+  }
+  function aboutOptions(sel) {
+    var h = '<option value="">General (no topic)</option><optgroup label="Tradeshow partners">' +
+      D.partners.slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).map(function (p) {
+        return '<option value="' + esc(p.name) + '"' + (p.name === sel ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</optgroup>';
+    D.workstreams.forEach(function (ws) {
+      var g = D.topics.filter(function (t) { return t.workstream === ws && !t.private; }).sort(function (a, b) { return a.id.localeCompare(b.id, undefined, { numeric: true }); });
+      if (!g.length) return;
+      h += '<optgroup label="' + esc(ws) + '">' + g.map(function (t) {
+        var label = t.id + ' · ' + (t.topic.length > 70 ? t.topic.slice(0, 67) + '...' : t.topic) + (t.status === 'Done' ? ' (done)' : '');
+        return '<option value="' + esc(t.id) + '"' + (t.id === sel ? ' selected' : '') + '>' + esc(label) + '</option>'; }).join('') + '</optgroup>';
+    });
+    return h;
+  }
+  function authorOptions() {
+    var a = getAuthor(), names = D.people.map(function (p) { return p.name; });
+    if (a && names.indexOf(a) < 0) names.unshift(a);
+    return names.map(function (n) { return '<option' + (n === a ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+  }
+  function updatesFor(about) { return D.updates.filter(function (u) { return u.about === about; }).sort(byNewest); }
+  function byNewest(a, b) { return String(b.date).localeCompare(String(a.date)) || b.row - a.row; }
+  function uitem(u, showAbout) {
+    return '<div class="uitem"><div class="uhead">' +
+      (showAbout ? (u.about ? '<button class="about" data-open="' + esc(u.about) + '">' + esc(u.about) + '</button>' + (u.title && u.title !== u.about ? '<span>' + esc(u.title.length > 80 ? u.title.slice(0, 77) + '...' : u.title) + '</span>' : '') : '<b>General</b>') + '<span>·</span>' : '') +
+      '<span>' + esc(u.author || 'unknown') + '</span>' + (showAbout ? '' : '<span>· ' + fmt(u.date) + '</span>') + '</div>' +
+      '<div class="utext">' + esc(u.text) + '</div></div>';
+  }
+  function viewUpdates() {
+    if (!D.updatesOk) return '<div class="banner err"><b>No Updates tab.</b> The sheet has no tab called Updates, or it could not be read. Add it, then press Refresh.</div>';
+    var h = '<div class="ucompose">' +
+      '<div class="field"><label for="u-about">About</label><select id="u-about">' + aboutOptions(uFilter) + '</select></div>' +
+      '<div class="field"><label for="u-author">From</label><select id="u-author">' + authorOptions() + '</select></div>' +
+      '<div class="field full"><label for="u-text">Update</label><textarea id="u-text" placeholder="What happened, what was decided, what is next"></textarea></div>' +
+      '<div class="field full" style="flex-direction:row;align-items:center;gap:10px"><button class="btn" id="u-add">Add update</button><span class="note" style="margin:0">Saved with today\'s date on the Updates tab of the sheet.</span></div></div>';
+    h += '<div class="bar"><input type="search" id="uq" placeholder="Search updates" value="' + esc(uQuery) + '">' +
+      '<select id="uf"><option value="">All topics and partners</option>' + aboutOptions(uFilter).replace('<option value="">General (no topic)</option>', '<option value="__general">General (no topic)</option>') + '</select></div>';
+    var q = uQuery.toLowerCase();
+    var items = D.updates.filter(function (u) {
+      if (uFilter === '__general' && u.about) return false;
+      if (uFilter && uFilter !== '__general' && u.about !== uFilter) return false;
+      if (q && (u.about + ' ' + u.title + ' ' + u.author + ' ' + u.text).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(byNewest);
+    if (!items.length) return h + '<div class="list"><div class="empty">' + (D.updates.length ? 'No updates match.' : 'No updates yet. Write the first one above.') + '</div></div>';
+    var last = null;
+    items.forEach(function (u) {
+      if (u.date !== last) { last = u.date; h += '<div class="uday">' + (u.date ? parse(u.date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'No date') + '</div>'; }
+      h += uitem(u, true);
+    });
+    return h;
+  }
+  function modalUpdates(box, about) {
+    if (!about || !D.updatesOk) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    var list = updatesFor(about);
+    box.style.display = '';
+    box.innerHTML = '<h4>Updates <span class="note">' + list.length + '</span></h4>' +
+      '<div class="uadd"><textarea data-utext placeholder="Add an update about ' + esc(about) + '"></textarea><button class="btn" type="button" data-uadd="' + esc(about) + '">Add</button></div>' +
+      (list.length ? list.slice(0, 20).map(function (u) { return uitem(u, false); }).join('') + (list.length > 20 ? '<div class="note">+ ' + (list.length - 20) + ' older in the Updates tab</div>' : '') : '<div class="note">No updates yet.</div>');
+  }
+  function postUpdate(about, text, btn, after) {
+    text = (text || '').trim();
+    if (!text) return toast('Write the update first.', true);
+    var u = { about: about || '', title: about ? aboutTitle(about) : '', author: getAuthor(), text: text };
+    btn.disabled = true; var lbl = btn.textContent; btn.textContent = 'Saving...';
+    call('addUpdate', [u], function (saved) {
+      btn.disabled = false; btn.textContent = lbl;
+      D.updates.push(saved); toast('Update saved' + (about ? ' for ' + about : ''));
+      after();
+    }, function () { btn.disabled = false; btn.textContent = lbl; });
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-uadd]'); if (!b) return;
+    var about = b.dataset.uadd, box = b.closest('.mupd');
+    postUpdate(about, box.querySelector('[data-utext]').value, b, function () { modalUpdates(box, about); if (view === 'updates') render(); });
+  });
+
   var pFilter = '';
   function pslug(s) { return 'ps-' + s.replace(/ /g, '-'); }
   function pDateClass(p) {
@@ -617,12 +733,19 @@
   }
 
   function render() {
-    var h = view === 'week' ? viewWeek() : view === 'people' ? viewPeople() : view === 'partners' ? viewPartners() : viewAll();
+    var h = view === 'week' ? viewWeek() : view === 'people' ? viewPeople() : view === 'partners' ? viewPartners() : view === 'updates' ? viewUpdates() : viewAll();
     $('main').innerHTML = h;
     var q = $('q'); if (q) q.oninput = function () { filters.q = q.value; var pos = q.selectionStart; render(); var q2 = $('q'); q2.focus(); q2.setSelectionRange(pos, pos); };
     var fo = $('fOwner'); if (fo) fo.onchange = function () { if (view === 'week') weekWho = fo.value; else filters.owner = fo.value; render(); };
     var fw = $('fWs'); if (fw) fw.onchange = function () { filters.ws = fw.value; render(); };
     var fs = $('fStatus'); if (fs) fs.onchange = function () { filters.status = fs.value; render(); };
+    var uq = $('uq'); if (uq) uq.oninput = function () { uQuery = uq.value; var pos = uq.selectionStart; render(); var u2 = $('uq'); u2.focus(); u2.setSelectionRange(pos, pos); };
+    var uf = $('uf'); if (uf) uf.onchange = function () { uFilter = uf.value; render(); };
+    var ua = $('u-author'); if (ua) ua.onchange = function () { setAuthor(ua.value); };
+    var ub = $('u-add'); if (ub) ub.onclick = function () {
+      var keep = $('u-about').value;
+      postUpdate(keep, $('u-text').value, ub, function () { render(); var t = $('u-text'); if (t) t.value = ''; });
+    };
   }
 
   /* ---------- events ---------- */
@@ -641,6 +764,7 @@
     view = b.dataset.v;
     [].forEach.call($('nav').children, function (x) { x.classList.toggle('on', x === b); });
     $('addBtn').textContent = view === 'partners' ? '+ Add partner' : '+ Add topic';
+    if (view === 'updates' && uFilter === '__general') uFilter = '';
     render();
   };
   $('main').addEventListener('change', function (e) {
@@ -661,6 +785,8 @@
     var pe = e.target.closest('[data-pedit]'); if (pe) return openPartner(findPartner(pe.dataset.pedit));
     if (e.target.closest('#addPartner')) return openPartner(null);
     var pf = e.target.closest('[data-pf]'); if (pf) { pFilter = pf.dataset.pf; return render(); }
+    var op = e.target.closest('[data-open]');
+    if (op) { var ab = op.dataset.open; if (find(ab)) return openModal(find(ab)); if (findPartner(ab)) return openPartner(findPartner(ab)); return toast(ab + ' is no longer in the planner.', true); }
     var mk = e.target.closest('[data-mkfolder]');
     if (mk) {
       var id = mk.dataset.mkfolder; mk.disabled = true;
@@ -695,6 +821,7 @@
     $('pTypeList').innerHTML = Object.keys(types).map(function (t) { return '<option value="' + esc(t) + '">'; }).join('');
     $('pNote').textContent = p ? 'Last updated ' + (p.updated ? fmt(p.updated) : 'unknown') + '. Saved to the Partners tab of the sheet.' : 'Saved as a new row on the Partners tab of the sheet.';
     paintPick();
+    modalUpdates($('pUpdates'), p ? p.name : '');
     $('pshade').classList.add('on');
     (p ? $('pStatusPick').querySelector('.on') : $('p-name')).focus();
   }
@@ -733,6 +860,7 @@
     $('openFolder').href = v.folder || '#';
     $('mNote').textContent = ro ? 'Private topic: edit it in your private planning file (Hyperscout Private Planning, tab Private topics).' :
       (t ? 'Last updated ' + (t.updated ? fmt(t.updated) : 'unknown') + '.' : 'A Drive folder is created for the new topic when you save.');
+    modalUpdates($('mUpdates'), t && !t.private ? t.id : '');
     $('shade').classList.add('on');
     if (!ro) $('f-topic').focus();
   }

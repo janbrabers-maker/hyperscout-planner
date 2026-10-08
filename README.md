@@ -6,6 +6,7 @@ A small web app on top of the Google Sheet **Hyperscout Topics (planner app)**.
 - **People**: one card per person with status mix, overdue count and open topics
 - **All topics**: search and filter, add, edit or remove topics, change status in one click
 - **Tradeshow partners** (Claude page): one row per fair or trade partner (Pitti, Modefabriek, INDX, MICAM...). Click a name to change its status (Prospect, In talks, Proposal sent, Negotiating, Signed, Live, Parked, Lost) or details; *+ Add partner* adds a new one. Stored on the *Partners* tab of the sheet
+- **Updates** (Claude page): a running log. Write an update about any topic, any partner or nothing in particular; it is saved with the date and author on the *Updates* tab. Each topic and partner card also shows its own updates and has an Add box
 - **Drive**: every topic gets its own folder under *Hyperscout Planning / <workstream> / <ID · topic>*, linked from the app and the email. The *Open Drive folder* button in the app header opens *Hyperscout Planning* itself
 - **Daily email**: every work day (Monday to Friday) in the early morning (Amsterdam), one email per person marked *Yes* in the email column of the People tab: overdue, today, rest of this week, next week, and a one-line view of the rest of the team
 
